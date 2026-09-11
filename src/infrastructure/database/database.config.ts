@@ -18,7 +18,7 @@ export const buildDataSourceOptions = (get: EnvReader): DataSourceOptions => ({
   username: get('POSTGRES_USER') ?? 'schemka',
   password: get('POSTGRES_PASSWORD') ?? 'schemka',
   database: get('POSTGRES_DB') ?? 'schemka',
-  entities: [__dirname + '/../**/*.entity.{ts,js}'],
+  entities: [__dirname + '/../../**/*.entity.{ts,js}'],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   migrationsTableName: 'migrations',
   // Схему міняємо тільки міграціями — synchronize мовчки дропає колонки.

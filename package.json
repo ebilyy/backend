@@ -18,13 +18,13 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "typeorm": "typeorm-ts-node-commonjs -d src/database/data-source.ts",
+    "typeorm": "typeorm-ts-node-commonjs -d src/infrastructure/database/data-source.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "migration:show": "npm run typeorm -- migration:show",
-    "db:up": "docker compose up -d",
+    "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down"
   },
   "dependencies": {
@@ -37,7 +37,8 @@
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^1.1.1"
+    "typeorm": "^1.1.1",
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
