@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-schemka}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
+      # Ліворуч — порт на хості (для psql/GUI та локального npm run start:dev).
       - '${POSTGRES_PORT:-5444}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -20,6 +21,36 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  api:
+    build:
+      context: .
+      target: production
+    container_name: schemka-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Усередині compose-мережі БД — за іменем сервісу та внутрішнім портом 5432.
+      # POSTGRES_PORT з .env (5444) стосується лише мапінгу на хост.
+      DB_HOST: postgres
+      POSTGRES_PORT: 5432
+      # Міграції прогоняються на старті контейнера.
+      DB_MIGRATIONS_RUN: 'true'
+    ports:
+      - '${PORT:-3008}:${PORT:-3008}'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:'+(process.env.PORT||3008)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   postgres-data:
