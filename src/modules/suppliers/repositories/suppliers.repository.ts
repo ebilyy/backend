@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
+import { PaginationQueryDto, toSkipTake } from '../../../common/pagination';
 import { CreateSupplierDto, UpdateSupplierDto } from '../dto';
 import { Supplier } from '../entities/supplier.entity';
 
@@ -17,8 +18,13 @@ export class SuppliersRepository extends Repository<Supplier> {
     return this.findOne({ where: { id }, withDeleted: includeDeleted });
   }
 
-  findAllSuppliers() {
-    return this.find();
+  // Сортування обов'язкове: без нього БД не гарантує сталий порядок і
+  // один запис може з'явитися на двох сторінках або зникнути з обох.
+  findAllSuppliers(pagination: PaginationQueryDto) {
+    return this.findAndCount({
+      ...toSkipTake(pagination),
+      order: { id: 'ASC' },
+    });
   }
 
   createSupplier(supplierData: CreateSupplierDto) {

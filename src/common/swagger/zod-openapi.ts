@@ -1,6 +1,7 @@
-import { ApiBody } from '@nestjs/swagger';
+import { applyDecorators } from '@nestjs/common';
+import { ApiBody, ApiQuery } from '@nestjs/swagger';
 import type { SchemaObject } from '@nestjs/swagger';
-import { z, ZodType } from 'zod';
+import { z, ZodObject, ZodType } from 'zod';
 
 /**
  * Перетворює zod-схему на OpenAPI-схему, щоб документація бралася з тієї
@@ -23,4 +24,22 @@ export function zodToOpenApi(schema: ZodType): SchemaObject {
 /** @ApiBody, але тіло описується zod-схемою, а не окремим класом. */
 export function ApiZodBody(schema: ZodType, description?: string) {
   return ApiBody({ description, schema: zodToOpenApi(schema) });
+}
+
+/**
+ * @ApiQuery на кожне поле zod-схеми: query-параметри в OpenAPI живуть
+ * поштучно, тож об'єктну схему розбираємо на властивості.
+ */
+export function ApiZodQuery(schema: ZodObject) {
+  const { properties = {}, required = [] } = zodToOpenApi(schema);
+
+  return applyDecorators(
+    ...Object.entries(properties).map(([name, property]) =>
+      ApiQuery({
+        name,
+        required: required.includes(name),
+        schema: property as SchemaObject,
+      }),
+    ),
+  );
 }

@@ -3,6 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  paginate,
+  Paginated,
+  PaginationQueryDto,
+} from '../../../common/pagination';
 import { Supplier } from '../entities/supplier.entity';
 import { CreateSupplierDto, UpdateSupplierDto } from '../dto';
 import { SuppliersRepository } from '../repositories/suppliers.repository';
@@ -11,8 +16,11 @@ import { SuppliersRepository } from '../repositories/suppliers.repository';
 export class SuppliersService {
   constructor(private readonly suppliersRepository: SuppliersRepository) {}
 
-  findAll(): Promise<Supplier[]> {
-    return this.suppliersRepository.findAllSuppliers();
+  async findAll(pagination: PaginationQueryDto): Promise<Paginated<Supplier>> {
+    return paginate(
+      await this.suppliersRepository.findAllSuppliers(pagination),
+      pagination,
+    );
   }
 
   async findOne(id: number): Promise<Supplier> {
