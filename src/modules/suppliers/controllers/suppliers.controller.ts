@@ -9,19 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBadRequestResponse,
-  ApiConflictResponse,
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiParam,
-  ApiTags,
-} from '@nestjs/swagger';
-import {
-  ErrorResponseDto,
-  ValidationErrorResponseDto,
-} from '../../../common/dto';
+import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   ApiPaginatedResponse,
   paginationQuerySchema,
@@ -35,18 +23,11 @@ import { Supplier } from '../entities/supplier.entity';
 import { SuppliersService } from '../services/suppliers.service';
 
 @ApiTags('suppliers')
-@ApiBadRequestResponse({
-  description: 'Дані не пройшли валідацію',
-  type: ValidationErrorResponseDto,
-})
 @Controller('suppliers')
 export class SuppliersController {
   constructor(private readonly suppliersService: SuppliersService) {}
 
   @Get()
-  @ApiOperation({
-    summary: 'Список постачальників',
-  })
   @ApiZodQuery(paginationQuerySchema)
   @ApiPaginatedResponse(Supplier)
   findAll(
@@ -57,20 +38,14 @@ export class SuppliersController {
   }
 
   @Get(':id')
-  @ApiParam({ name: 'id', type: Number, example: 1 })
   @ApiOkResponse({ type: Supplier })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.suppliersService.findOne(id);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Створити постачальника' })
   @ApiZodBody(createSupplierSchema)
   @ApiCreatedResponse({ type: Supplier })
-  @ApiConflictResponse({
-    description: 'Email уже зайнятий, зокрема й видаленим постачальником',
-    type: ErrorResponseDto,
-  })
   create(
     @Body(new ZodValidationPipe(createSupplierSchema)) dto: CreateSupplierDto,
   ) {
@@ -78,14 +53,14 @@ export class SuppliersController {
   }
 
   @Delete(':id')
+  @ApiOkResponse({ type: Supplier })
   delete(@Param('id', ParseIntPipe) id: number) {
     return this.suppliersService.delete(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Оновити постачальника' })
-  @ApiParam({ name: 'id', type: Number, example: 1 })
-  @ApiZodBody(updateSupplierSchema, 'Хоча б одне поле обов’язкове')
+  @ApiZodBody(updateSupplierSchema)
+  @ApiOkResponse({ type: Supplier })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateSupplierSchema)) dto: UpdateSupplierDto,

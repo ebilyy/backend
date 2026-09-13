@@ -4,14 +4,10 @@ import type { SchemaObject } from '@nestjs/swagger';
 import { z, ZodObject, ZodType } from 'zod';
 
 /**
- * Перетворює zod-схему на OpenAPI-схему, щоб документація бралася з тієї
- * самої схеми, якою валідується запит, і не роз'їжджалася з нею.
- *
- * io: 'input' — описуємо те, що клієнт надсилає, а не результат після
- * трансформацій; unrepresentable: 'any' — .trim()/.toLowerCase() та .refine()
- * не мають відповідника в JSON Schema, тож їх просто пропускаємо замість
- * падіння. Те, що через це губиться (наприклад format: 'email'), доганяємо
- * через .meta() у самій схемі.
+ * Zod-схема → OpenAPI, щоб документація бралася з тієї самої схеми, якою
+ * валідується запит. io: 'input' — описуємо те, що надсилає клієнт;
+ * unrepresentable: 'any' — .trim()/.refine() не мають відповідника
+ * в JSON Schema, тож їх просто пропускаємо. Решту доганяємо через .meta().
  */
 export function zodToOpenApi(schema: ZodType): SchemaObject {
   return z.toJSONSchema(schema, {
@@ -22,14 +18,11 @@ export function zodToOpenApi(schema: ZodType): SchemaObject {
 }
 
 /** @ApiBody, але тіло описується zod-схемою, а не окремим класом. */
-export function ApiZodBody(schema: ZodType, description?: string) {
-  return ApiBody({ description, schema: zodToOpenApi(schema) });
+export function ApiZodBody(schema: ZodType) {
+  return ApiBody({ schema: zodToOpenApi(schema) });
 }
 
-/**
- * @ApiQuery на кожне поле zod-схеми: query-параметри в OpenAPI живуть
- * поштучно, тож об'єктну схему розбираємо на властивості.
- */
+/** Query-параметри в OpenAPI живуть поштучно, тож розбираємо об'єкт на поля. */
 export function ApiZodQuery(schema: ZodObject) {
   const { properties = {}, required = [] } = zodToOpenApi(schema);
 

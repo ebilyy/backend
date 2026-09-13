@@ -7,11 +7,11 @@ import {
 } from 'typeorm';
 
 export abstract class AbstractEntity {
-  @ApiProperty({ description: 'Ідентифікатор запису', example: 1 })
+  @ApiProperty()
   @PrimaryGeneratedColumn('increment', { name: 'id' })
   readonly id: number;
 
-  @ApiProperty({ example: '2026-09-11T10:00:00.000Z' })
+  @ApiProperty()
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamptz',
@@ -19,7 +19,7 @@ export abstract class AbstractEntity {
   })
   createdAt: Date;
 
-  @ApiProperty({ example: '2026-09-11T10:00:00.000Z' })
+  @ApiProperty()
   @UpdateDateColumn({
     name: 'updated_at',
     type: 'timestamptz',
