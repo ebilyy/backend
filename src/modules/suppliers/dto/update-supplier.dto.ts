@@ -1,12 +1,10 @@
-import { z } from 'zod';
-import { createSupplierSchema } from './create-supplier.dto';
+import { ApiSchema, PartialType } from '@nestjs/swagger';
+import { CreateSupplierDto } from './create-supplier.dto';
 
-// Порожній PATCH інакше був би «успішним», не змінивши нічого.
-export const updateSupplierSchema = createSupplierSchema
-  .partial()
-  .refine((data) => Object.keys(data).length > 0, {
-    message: 'Треба передати хоча б одне поле для оновлення',
-  })
-  .meta({ description: 'Хоча б одне поле обов’язкове' });
-
-export type UpdateSupplierDto = z.infer<typeof updateSupplierSchema>;
+// PartialType зі @nestjs/swagger переносить і правила валідації, і
+// Swagger-метадані. skipNullProperties: false — інакше null у name/email
+// пройшов би валідацію і впав уже на NOT NULL у БД.
+@ApiSchema({ description: 'Хоча б одне поле обов’язкове' })
+export class UpdateSupplierDto extends PartialType(CreateSupplierDto, {
+  skipNullProperties: false,
+}) {}

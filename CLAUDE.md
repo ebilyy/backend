@@ -43,19 +43,20 @@ NestJS 11 + TypeORM + Postgres. Feature modules live in `src/modules/<feature>/`
 - **Service** holds business rules and throws HTTP exceptions (`NotFoundException`, `ConflictException`). It composes repository calls; e.g. `update` re-reads via `findOne` so the caller gets the fresh row, and `delete` soft-deletes then returns the row with `withDeleted: true`.
 - **Controller** is thin: it wires pipes, Swagger decorators, and delegates.
 
-### Validation and OpenAPI both come from Zod
+### Validation: class-validator DTO classes
 
-There is no `class-validator`/`class-transformer`. Request shapes are Zod schemas in `dto/`, and the DTO "type" is `z.infer<typeof schema>` — so DTOs are types, not classes, and must be imported with `import type`.
+Request shapes are classes in `dto/` decorated with `class-validator` rules, `class-transformer` transforms and `@ApiProperty` for Swagger. DTOs must be imported as values, never with `import type`: `emitDecoratorMetadata` needs the class reference at runtime, otherwise the pipe sees `Object` and validates nothing.
 
-- `ZodValidationPipe` (`src/common/pipes/zod-validation.pipe.ts`) is applied per-parameter — `@Body(new ZodValidationPipe(schema))`, `@Query(new ZodValidationPipe(schema))` — not as a global pipe. It returns parsed data (unknown keys stripped) or a 400 listing `{ field, message }`.
-- `ApiZodBody` / `ApiZodQuery` (`src/common/swagger/zod-openapi.ts`) convert the *same* schema to OpenAPI via `z.toJSONSchema({ target: 'openapi-3.0', io: 'input', unrepresentable: 'any' })`. Because `unrepresentable: 'any'` drops things JSON Schema can't express and constraints behind `.pipe()` are lost, documentation details (`description`, `example`, `format`, `maxLength`) are attached with `.meta()` on the schema. See `create-supplier.dto.ts` for the pattern.
-- Response schemas still come from `@ApiProperty` on the **entity** class, which doubles as the Swagger response model (`@ApiOkResponse({ type: Supplier })`).
+- `AppValidationPipe` (`src/common/pipes/validation.pipe.ts`) is registered globally via `APP_PIPE` in `AppModule` (not `app.useGlobalPipes`, so e2e tests built from `AppModule` get it too). It runs with `transform: true` (controllers receive DTO instances with transforms and field defaults applied) and `whitelist: true` (undecorated keys are stripped), and turns errors into a 400 listing `{ field, message }` — `fieldErrorsException()` builds that shape for other pipes.
+- Transforms run before validation, so normalisation goes in `@Trim()` / `@ToLowerCase()` (`src/common/decorators/`) and validators see the cleaned value. Query numbers need `@Type(() => Number)`; defaults are field initializers (see `PaginationQueryDto`).
+- Swagger reads the body/query DTO classes directly, so docs details (`description`, `example`, `format`, `minLength`/`maxLength`) go into `@ApiProperty` next to the validators. Response schemas come from `@ApiProperty` on the **entity** class, which doubles as the Swagger response model (`@ApiOkResponse({ type: Supplier })`).
+- Update DTOs are `PartialType(CreateDto, { skipNullProperties: false })` from `@nestjs/swagger` (carries over validators, transforms and docs). `skipNullProperties: false` makes optional fields skip only `undefined`, so `null` in a NOT NULL column is a 400 rather than a DB error. Empty PATCH bodies are rejected by `@Body(NonEmptyBodyPipe)`.
 
-Adding a field therefore touches: the Zod create schema (with `.meta()`), the entity column (with `@ApiProperty`), and a generated migration. The update schema derives from the create schema via `.partial().refine(...)` — the refine rejects an empty PATCH body.
+Adding a field therefore touches: the create DTO (validators + `@ApiProperty`), the entity column (with `@ApiProperty`), and a generated migration.
 
 ### Pagination
 
-`src/common/pagination/` is the single implementation: `paginationQuerySchema` (coerced `page`/`limit`, `limit` capped at `MAX_LIMIT = 100`) → `toSkipTake()` in the repository → `findAndCount` → `paginate()` wraps the tuple into `{ items, meta }`. Docs come from the `@ApiPaginatedResponse(Entity)` decorator, which builds the schema by hand with `$ref` because generics are erased at runtime. List queries must always specify an `order` or pages will be unstable.
+`src/common/pagination/` is the single implementation: `PaginationQueryDto` (`page`/`limit` converted from query strings with `@Type(() => Number)`, `limit` capped at `MAX_LIMIT = 100`) → `toSkipTake()` in the repository → `findAndCount` → `paginate()` wraps the tuple into `{ items, meta }`. Docs come from the `@ApiPaginatedResponse(Entity)` decorator, which builds the schema by hand with `$ref` because generics are erased at runtime. List queries must always specify an `order` or pages will be unstable.
 
 ### Entities and soft delete
 
@@ -66,6 +67,10 @@ Every entity extends `AbstractEntity` (`src/common/entity/abstract.entity.ts`): 
 `buildDataSourceOptions(get)` in `src/infrastructure/database/database.config.ts` is the one source of DB options, consumed by both `DatabaseModule` (through `ConfigService`, with `autoLoadEntities: true`) and `data-source.ts` (the TypeORM CLI, which loads `.env` itself via `dotenv` since it runs outside Nest DI). Change options there, never in one of the two consumers.
 
 `synchronize` defaults to false — schema changes go through migrations only. In `docker-compose.yml` the `api` service overrides `DB_HOST=postgres`, `POSTGRES_PORT=5432` (the host-side `POSTGRES_PORT=5444` is only a port mapping) and sets `DB_MIGRATIONS_RUN=true` so migrations run on container start.
+
+## Intents
+
+New ideas, tickets and incidents are captured as `intent/<YYYY-MM-DD>-<slug>/intent.md` via the project skill `/capture-intent` (`.claude/skills/capture-intent/`). The matching `spec.md` goes in the same folder later.
 
 ## Conventions
 

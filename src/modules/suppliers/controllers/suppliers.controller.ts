@@ -12,13 +12,10 @@ import {
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   ApiPaginatedResponse,
-  paginationQuerySchema,
+  PaginationQueryDto,
 } from '../../../common/pagination';
-import type { PaginationQueryDto } from '../../../common/pagination';
-import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
-import { ApiZodBody, ApiZodQuery } from '../../../common/swagger';
-import { createSupplierSchema, updateSupplierSchema } from '../dto';
-import type { CreateSupplierDto, UpdateSupplierDto } from '../dto';
+import { NonEmptyBodyPipe } from '../../../common/pipes';
+import { CreateSupplierDto, UpdateSupplierDto } from '../dto';
 import { Supplier } from '../entities/supplier.entity';
 import { SuppliersService } from '../services/suppliers.service';
 
@@ -28,12 +25,8 @@ export class SuppliersController {
   constructor(private readonly suppliersService: SuppliersService) {}
 
   @Get()
-  @ApiZodQuery(paginationQuerySchema)
   @ApiPaginatedResponse(Supplier)
-  findAll(
-    @Query(new ZodValidationPipe(paginationQuerySchema))
-    pagination: PaginationQueryDto,
-  ) {
+  findAll(@Query() pagination: PaginationQueryDto) {
     return this.suppliersService.findAll(pagination);
   }
 
@@ -44,11 +37,8 @@ export class SuppliersController {
   }
 
   @Post()
-  @ApiZodBody(createSupplierSchema)
   @ApiCreatedResponse({ type: Supplier })
-  create(
-    @Body(new ZodValidationPipe(createSupplierSchema)) dto: CreateSupplierDto,
-  ) {
+  create(@Body() dto: CreateSupplierDto) {
     return this.suppliersService.create(dto);
   }
 
@@ -59,11 +49,10 @@ export class SuppliersController {
   }
 
   @Patch(':id')
-  @ApiZodBody(updateSupplierSchema)
   @ApiOkResponse({ type: Supplier })
   update(
     @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(updateSupplierSchema)) dto: UpdateSupplierDto,
+    @Body(NonEmptyBodyPipe) dto: UpdateSupplierDto,
   ) {
     return this.suppliersService.update(id, dto);
   }

@@ -1,33 +1,49 @@
-import { z } from 'zod';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
+import { ToLowerCase, Trim } from '../../../common/decorators';
 
-export const createSupplierSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .max(255)
-    .meta({ description: 'Назва постачальника', example: 'ТОВ «Ромашка»' }),
-  // trim/lowercase до перевірки формату: z.email() інакше побачить сирий рядок
-  // із пробілами. Нижній регістр — щоб унікальний індекс не пропускав
-  // A@b.com поруч з a@b.com.
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .pipe(z.email().max(255))
-    // format/maxLength — руками, бо в OpenAPI описуємо вхід, а обмеження
-    // висять на виході pipe() і туди не потрапляють.
-    .meta({
-      description: 'Унікальний email, зводиться до нижнього регістру',
-      format: 'email',
-      maxLength: 255,
-      example: 'sales@romashka.ua',
-    }),
-  description: z
-    .string()
-    .trim()
-    .nullish()
-    .meta({ description: 'Довільний опис', example: 'Постачає канцелярію' }),
-});
+export class CreateSupplierDto {
+  @ApiProperty({
+    minLength: 1,
+    maxLength: 255,
+    description: 'Назва постачальника',
+    example: 'ТОВ «Ромашка»',
+  })
+  @Trim()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  name: string;
 
-export type CreateSupplierDto = z.infer<typeof createSupplierSchema>;
+  // @Transform відпрацьовує до валідації, тож @IsEmail бачить уже обрізаний
+  // рядок. Нижній регістр — щоб унікальний індекс не пропускав A@b.com
+  // поруч з a@b.com.
+  @ApiProperty({
+    format: 'email',
+    maxLength: 255,
+    description: 'Унікальний email, зводиться до нижнього регістру',
+    example: 'sales@romashka.ua',
+  })
+  @Trim()
+  @ToLowerCase()
+  @IsEmail()
+  @MaxLength(255)
+  email: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: 'Довільний опис',
+    example: 'Постачає канцелярію',
+  })
+  @Trim()
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+}
