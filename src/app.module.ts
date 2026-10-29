@@ -5,12 +5,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppValidationPipe } from './common/pipes';
 import { DatabaseModule } from './infrastructure/database/database.module';
+import { HealthModule } from './infrastructure/health/health.module';
 import { FilesModule, SuppliersModule } from './modules';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
+    HealthModule,
     FilesModule,
     SuppliersModule,
   ],

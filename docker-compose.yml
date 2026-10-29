@@ -10,7 +10,8 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       # Ліворуч — порт на хості (для psql/GUI та локального npm run start:dev).
-      - '${POSTGRES_PORT:-5444}:5432'
+      # 127.0.0.1 — щоб БД з дефолтним паролем не була видна всій локальній мережі.
+      - '127.0.0.1:${POSTGRES_PORT:-5444}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -28,6 +29,8 @@ services:
       target: production
     container_name: schemka-api
     restart: unless-stopped
+    # tini як PID 1 — пересилає SIGTERM у node і прибирає зомбі-процеси.
+    init: true
     env_file: .env
     environment:
       # Усередині compose-мережі БД — за іменем сервісу та внутрішнім портом 5432.
@@ -37,7 +40,7 @@ services:
       # Міграції прогоняються на старті контейнера.
       DB_MIGRATIONS_RUN: 'true'
     ports:
-      - '${PORT:-3008}:${PORT:-3008}'
+      - '127.0.0.1:${PORT:-3008}:${PORT:-3008}'
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,7 +49,7 @@ services:
         - CMD
         - node
         - -e
-        - fetch('http://127.0.0.1:'+(process.env.PORT||3008)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+        - fetch('http://127.0.0.1:'+(process.env.PORT||3008)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       retries: 5
