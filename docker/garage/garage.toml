@@ -1,0 +1,16 @@
+# Локальний Garage на один вузол; у проді те саме дає one-click сервіс Coolify.
+# rpc_secret, ключ і бакет приходять зі змінних оточення (docker-compose.yml),
+# а layout, ключ і бакет створює сам `garage server --single-node --default-bucket`.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+
+# Одна копія даних — для одного вузла інакше не буває.
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"

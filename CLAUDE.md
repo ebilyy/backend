@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run start:dev          # watch mode (needs Postgres running)
+npm run start:dev          # watch mode (needs Postgres and Garage running)
 npm run build              # nest build -> dist/
 npm run lint               # eslint --fix over src, test
 npm run format             # prettier over src, test
@@ -15,7 +15,7 @@ npx jest src/modules/suppliers/services/suppliers.service.spec.ts   # single fil
 npx jest -t "should be defined"                                     # single test by name
 npm run test:e2e           # jest --config ./test/jest-e2e.json (test/*.e2e-spec.ts)
 
-npm run db:up              # docker compose up -d postgres
+npm run db:up              # docker compose up -d postgres garage
 npm run db:down            # docker compose down
 ```
 
@@ -33,7 +33,7 @@ The app listens on `PORT` (`.env` sets 3008, code falls back to 3000). Swagger U
 
 ## Architecture
 
-NestJS 11 + TypeORM + Postgres. Feature modules live in `src/modules/<feature>/` and are re-exported from `src/modules/index.ts`; cross-cutting helpers live in `src/common/`, infrastructure wiring in `src/infrastructure/`. `FilesModule` is currently an empty placeholder.
+NestJS 11 + TypeORM + Postgres. Feature modules live in `src/modules/<feature>/` and are re-exported from `src/modules/index.ts`; cross-cutting helpers live in `src/common/`, infrastructure wiring in `src/infrastructure/`. `FilesModule` holds the file storage and the `file_uploads` upload/list endpoints (see below).
 
 ### Layering inside a feature module
 
@@ -67,6 +67,22 @@ Every entity extends `AbstractEntity` (`src/common/entity/abstract.entity.ts`): 
 `buildDataSourceOptions(get)` in `src/infrastructure/database/database.config.ts` is the one source of DB options, consumed by both `DatabaseModule` (through `ConfigService`, with `autoLoadEntities: true`) and `data-source.ts` (the TypeORM CLI, which loads `.env` itself via `dotenv` since it runs outside Nest DI). Change options there, never in one of the two consumers.
 
 `synchronize` defaults to false — schema changes go through migrations only. In `docker-compose.yml` the `api` service overrides `DB_HOST=postgres`, `POSTGRES_PORT=5432` (the host-side `POSTGRES_PORT=5444` is only a port mapping) and sets `DB_MIGRATIONS_RUN=true` so migrations run on container start.
+
+### File storage (Garage, S3)
+
+File bytes live in [Garage](https://garagehq.deuxfleurs.fr), an S3-compatible store: the `garage` service in `docker-compose.yml` locally, a Coolify one-click service in prod. `FilesStorageService` (`src/modules/files/storage/`) wraps `@aws-sdk/client-s3` and deals only in object keys (`put`/`get`/`delete`/`ping`); deciding keys and DB rows is the files services' job. Options come from `buildStorageOptions(get)` (`S3_*` env vars, defaults match the local Garage). `/health` pings the bucket, so the app reports unhealthy without storage.
+
+- Garage creates its layout, access key and bucket itself on first start (`--single-node --default-bucket`, fed by `GARAGE_DEFAULT_*` = the app's `S3_*` values), so there is no init step.
+- `put` goes through `Upload` from `@aws-sdk/lib-storage`, because `PutObjectCommand` needs the body length up front and multipart uploads arrive as streams without it.
+- S3 has no rename: write under a fresh key, commit the DB row, then delete the old object, rather than porting the PRD's tmp-file + rename steps.
+
+Uploads: `POST /files` (multipart, repeated field `files`) and `GET /files` (paginated, newest first). Limits live in `files.constants.ts`: 10 MB per file, 10 files per request.
+
+- `FilesUploadInterceptor` calls `multer` directly instead of Nest's `FilesInterceptor`, which turns multer errors into English messages and drops `error.code`. It also sets `defParamCharset: 'utf8'`, because multer's `latin1` default garbles Cyrillic filenames.
+- Files are buffered in memory. That is acceptable at 10 × 10 MB, but raising the limits means switching to a streaming storage engine.
+- A batch is all-or-nothing: `FilesService` writes every object, then saves all rows in one transaction, and on any failure deletes every key.
+- `storage_key` is `select: false`, so it never reaches responses. A future download endpoint has to select it explicitly.
+- No duplicate bytes: `content_hash` (SHA-256 hex, also `select: false`) has a unique index over all rows, soft-deleted included. Before anything is written, `FilesService` rejects the whole batch with 409 if a file matches an existing row or another file in the same request. A concurrent duplicate fails on the index at save time, and the batch cleanup removes its objects.
 
 ## Intents
 
