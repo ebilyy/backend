@@ -66,7 +66,7 @@ Every entity extends `AbstractEntity` (`src/common/entity/abstract.entity.ts`): 
 
 `buildDataSourceOptions(get)` in `src/infrastructure/database/database.config.ts` is the one source of DB options, consumed by both `DatabaseModule` (through `ConfigService`, with `autoLoadEntities: true`) and `data-source.ts` (the TypeORM CLI, which loads `.env` itself via `dotenv` since it runs outside Nest DI). Change options there, never in one of the two consumers.
 
-`synchronize` defaults to false — schema changes go through migrations only. In `docker-compose.yml` the `api` service overrides `DB_HOST=postgres`, `POSTGRES_PORT=5432` (the host-side `POSTGRES_PORT=5444` is only a port mapping) and sets `DB_MIGRATIONS_RUN=true` so migrations run on container start.
+`synchronize` defaults to false — schema changes go through migrations only. In `docker-compose.yml` the `api` service overrides `DB_HOST=postgres`, `POSTGRES_PORT=5432` (the host-side `POSTGRES_PORT=5444` is only a port mapping) and sets `DB_MIGRATIONS_RUN=true` so migrations run on container start. The image is built with `NODE_ENV=production`, where an empty `CORS_ORIGINS` disables CORS entirely, so compose defaults `CORS_ORIGINS` to `http://localhost:5173` (the Vite front).
 
 ### File storage (Garage, S3)
 

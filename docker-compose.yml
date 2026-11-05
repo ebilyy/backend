@@ -67,6 +67,9 @@ services:
       # Міграції прогоняються на старті контейнера.
       DB_MIGRATIONS_RUN: 'true'
       S3_ENDPOINT: http://garage:3900
+      # Образ збирається з NODE_ENV=production, а там порожній CORS_ORIGINS
+      # вимикає CORS зовсім — тож локальний Vite-фронт треба дозволити явно.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports:
       - '127.0.0.1:${PORT:-3008}:${PORT:-3008}'
     depends_on:
