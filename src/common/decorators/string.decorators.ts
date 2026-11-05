@@ -12,3 +12,8 @@ export const ToLowerCase = () =>
   Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.toLowerCase() : value,
   );
+
+export const ToUpperCase = () =>
+  Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  );
